@@ -106,4 +106,52 @@ BEGIN
 END;
 $$;
 
+-- FUNÇÃO PARA DELETAR LÓGICO DE UM PRODUTO (PELO NOME)
+CREATE OR REPLACE FUNCTION deletar_produto(p_nome_produto VARCHAR)
+RETURNS VOID 
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_produto INTEGER;
+BEGIN
+    SELECT cod_produto 
+    INTO v_cod_produto 
+    FROM produto 
+    WHERE nome ILIKE p_nome_produto AND deletado = FALSE;
 
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Produto "%" não encontrado ou já inativo.', p_nome_produto;
+    END IF;
+
+    UPDATE produto
+    SET deletado = TRUE
+    WHERE cod_produto = v_cod_produto;
+
+    RAISE NOTICE 'Produto "%" removido com sucesso.', p_nome_produto;
+END;
+$$;
+
+-- FUNÇÃO PARA DELETAR LÓGICO DE UM INGREDIENTE (PELO NOME)
+CREATE OR REPLACE FUNCTION deletar_ingrediente(p_nome_ingrediente VARCHAR)
+RETURNS VOID 
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_ingrediente INTEGER;
+BEGIN
+    SELECT cod_ingrediente 
+    INTO v_cod_ingrediente 
+    FROM ingrediente 
+    WHERE nome ILIKE p_nome_ingrediente AND deletado = FALSE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Ingrediente "%" não encontrado ou já inativo.', p_nome_ingrediente;
+    END IF;
+
+    UPDATE ingrediente
+    SET deletado = TRUE
+    WHERE cod_ingrediente = v_cod_ingrediente;
+
+    RAISE NOTICE 'Ingrediente "%" removido com sucesso.', p_nome_ingrediente;
+END;
+$$;
