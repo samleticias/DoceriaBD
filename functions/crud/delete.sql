@@ -155,3 +155,64 @@ BEGIN
     RAISE NOTICE 'Ingrediente "%" removido com sucesso.', p_nome_ingrediente;
 END;
 $$;
+
+-- FUNÇÃO PARA DELETAR LÓGICO DE UM TIPO DE PAGAMENTO (PELO NOME)
+CREATE OR REPLACE FUNCTION deletar_tipo_pagamento(p_nome_tipo_pagamento VARCHAR)
+RETURNS VOID 
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_tipo_pagamento INTEGER;
+BEGIN
+    SELECT cod_tipo_pagamento 
+    INTO v_cod_tipo_pagamento 
+    FROM tipo_pagamento 
+    WHERE nome ILIKE p_nome_tipo_pagamento AND deletado = FALSE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Tipo de pagamento "%" não encontrado ou já inativo.', p_nome_tipo_pagamento;
+    END IF;
+
+    UPDATE tipo_pagamento
+    SET deletado = TRUE
+    WHERE cod_tipo_pagamento = v_cod_tipo_pagamento;
+
+    RAISE NOTICE 'Tipo de pagamento "%" removido com sucesso.', p_nome_tipo_pagamento;
+END;
+$$;
+
+-- FUNÇÃO PARA DELETAR LÓGICO DE UM ENDEREÇO (PELOS CAMPOS DO ENDEREÇO)
+CREATE OR REPLACE FUNCTION deletar_endereco(
+    p_rua VARCHAR,
+    p_numero VARCHAR,
+    p_bairro VARCHAR,
+    p_cep VARCHAR,
+    p_complemento VARCHAR
+)
+RETURNS VOID 
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_endereco INTEGER;
+BEGIN
+    SELECT cod_endereco
+    INTO v_cod_endereco
+    FROM endereco
+    WHERE rua ILIKE p_rua
+      AND numero = p_numero
+      AND bairro ILIKE p_bairro
+      AND cep = p_cep
+      AND complemento ILIKE p_complemento
+      AND deletado = FALSE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Endereço não encontrado ou já deletado.';
+    END IF;
+
+    UPDATE endereco
+    SET deletado = TRUE
+    WHERE cod_endereco = v_cod_endereco;
+
+    RAISE NOTICE 'Endereço removido com sucesso.';
+END;
+$$;
