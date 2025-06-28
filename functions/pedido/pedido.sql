@@ -237,10 +237,16 @@ BEGIN
         VALUES (p_cod_pedido, v_cod_produto, p_quantidade);
     END IF;
 
+    -- Recalcular e atualizar o valor total do pedido
+    UPDATE pedido
+    SET valor_total = calcular_valor_total_pedido(p_cod_pedido)
+    WHERE cod_pedido = p_cod_pedido;
+
     RAISE NOTICE 'Item % adicionado ao pedido %.', p_nome_produto, p_cod_pedido;
 END;
 $$;
 
+-- FUNÇÃO: Finalizar pedido
 -- FUNÇÃO: Finalizar pedido
 CREATE OR REPLACE FUNCTION finalizar_pedido(
     p_cod_pedido INT, 
@@ -254,18 +260,39 @@ DECLARE
     v_total NUMERIC;
     v_cod_atendente INT;
     v_cod_entregador INT;
+    v_status TEXT;
 BEGIN
-    PERFORM 1 FROM pedido WHERE cod_pedido = p_cod_pedido AND status = 'EM ANDAMENTO';
+    -- Verifica se o pedido existe e obtém o status atual
+    SELECT status INTO v_status
+    FROM pedido
+    WHERE cod_pedido = p_cod_pedido;
+
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Pedido % não está EM ANDAMENTO ou não existe.', p_cod_pedido;
+        RAISE EXCEPTION 'Pedido % não encontrado.', p_cod_pedido;
     END IF;
 
+    -- Validações de status
+    IF v_status = 'SAIU PARA ENTREGA' THEN
+        RAISE EXCEPTION 'Pedido % já foi finalizado e saiu para entrega.', p_cod_pedido;
+    ELSIF v_status = 'ENTREGUE' THEN
+        RAISE EXCEPTION 'Pedido % já foi entregue. Não pode ser finalizado novamente.', p_cod_pedido;
+    ELSIF v_status = 'CANCELADO' THEN
+        RAISE EXCEPTION 'Pedido % foi cancelado e não pode ser finalizado.', p_cod_pedido;
+    ELSIF v_status != 'EM PREPARO' THEN
+        RAISE EXCEPTION 'Pedido % não pode ser finalizado no status atual: "%".', p_cod_pedido, v_status;
+    END IF;
+
+    -- Busca os códigos dos funcionários envolvidos
     v_cod_atendente := buscar_cod_atendente(p_nome_atendente);
     v_cod_entregador := buscar_cod_entregador(p_nome_entregador);
 
+    -- Debita ingredientes do estoque
     PERFORM descontar_estoque_ingredientes(p_cod_pedido);
+
+    -- Calcula o valor total do pedido
     v_total := calcular_valor_total_pedido(p_cod_pedido);
 
+    -- Atualiza dados do pedido
     UPDATE pedido
     SET status = 'SAIU PARA ENTREGA',
         valor_total = v_total,
@@ -273,7 +300,80 @@ BEGIN
         cod_entregador = v_cod_entregador
     WHERE cod_pedido = p_cod_pedido;
 
-    RAISE NOTICE 'Pedido % finalizado. Total: R$ %', p_cod_pedido, v_total;
+    RAISE NOTICE 'Pedido % finalizado com sucesso. Total: R$ %', p_cod_pedido, v_total;
+END;
+$$;
+
+-- FUNÇÃO: Realizar pagamento do pedido
+CREATE OR REPLACE FUNCTION pagar_pedido(
+    p_cod_pedido INT,
+    p_nome_tipo_pagamento TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_tipo_pagamento INT;
+    v_status_pedido TEXT;
+    v_pago BOOLEAN;
+	v_qtd_itens INT;
+BEGIN
+    -- Verificar se o pedido existe e obter status e se já está pago
+    SELECT status, pago INTO v_status_pedido, v_pago
+    FROM pedido
+    WHERE cod_pedido = p_cod_pedido;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Pedido % não encontrado.', p_cod_pedido;
+    END IF;
+
+    -- Verificar se o pedido já foi pago
+    IF v_pago THEN
+        RAISE EXCEPTION 'Pedido % já foi pago.', p_cod_pedido;
+    END IF;
+
+    -- Verificar se o pedido já foi cancelado
+    IF v_status_pedido = 'CANCELADO' THEN
+        RAISE EXCEPTION 'Pedido % já foi cancelado e não pode ser pago.', p_cod_pedido;
+    END IF;
+
+    -- Verificar se o pedido já foi entregue
+    IF v_status_pedido = 'ENTREGUE' THEN
+        RAISE EXCEPTION 'Pedido % já foi entregue e não pode ser pago.', p_cod_pedido;
+    END IF;
+
+    -- Verificar se o status permite pagamento
+    IF v_status_pedido != 'EM ANDAMENTO' THEN
+        RAISE EXCEPTION 'Pedido % não pode ser pago no status atual: "%".', p_cod_pedido, v_status_pedido;
+    END IF;
+	
+	-- Verificar se o pedido possui itens
+    SELECT COUNT(*) INTO v_qtd_itens
+    FROM item_pedido
+    WHERE cod_pedido = p_cod_pedido;
+
+    IF v_qtd_itens = 0 THEN
+        RAISE EXCEPTION 'Pedido % não possui itens e não pode ser pago.', p_cod_pedido;
+    END IF;
+
+    -- Buscar código do tipo de pagamento
+    SELECT cod_tipo_pagamento INTO v_cod_tipo_pagamento
+    FROM tipo_pagamento
+    WHERE nome ILIKE p_nome_tipo_pagamento;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Tipo de pagamento "%" não encontrado.', p_nome_tipo_pagamento;
+    END IF;
+
+    -- Atualizar pedido: marcar como pago, definir tipo de pagamento, mudar status para 'EM PREPARO'
+    UPDATE pedido
+    SET 
+        pago = TRUE,
+        cod_tipo_pagamento = v_cod_tipo_pagamento,
+        status = 'EM PREPARO'
+    WHERE cod_pedido = p_cod_pedido;
+
+    RAISE NOTICE 'Pagamento registrado com sucesso para o pedido % usando "%".', p_cod_pedido, p_nome_tipo_pagamento;
 END;
 $$;
 
