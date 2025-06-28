@@ -247,7 +247,6 @@ END;
 $$;
 
 -- FUNÇÃO: Finalizar pedido
--- FUNÇÃO: Finalizar pedido
 CREATE OR REPLACE FUNCTION finalizar_pedido(
     p_cod_pedido INT, 
     p_nome_atendente TEXT, 
@@ -279,7 +278,7 @@ BEGIN
     ELSIF v_status = 'CANCELADO' THEN
         RAISE EXCEPTION 'Pedido % foi cancelado e não pode ser finalizado.', p_cod_pedido;
     ELSIF v_status != 'EM PREPARO' THEN
-        RAISE EXCEPTION 'Pedido % não pode ser finalizado no status atual: "%".', p_cod_pedido, v_status;
+        RAISE EXCEPTION 'Pedido % está em andamento e deve ser pago antes de finalizar. Status: "%".', p_cod_pedido, v_status;
     END IF;
 
     -- Busca os códigos dos funcionários envolvidos
