@@ -27,16 +27,17 @@ BEGIN
     END IF;
 
     -- Inserir pedido
-    INSERT INTO pedido (
-        cod_cliente, cod_endereco, data_hora_pedido,
-        hora_prevista_entrega,
-        status, valor_total
-    )
-    VALUES (
-        v_cod_cliente, v_cod_endereco, NOW(),
-        NOW() + INTERVAL '40 minutes',
-        'EM ANDAMENTO', 0
+    CALL inserir_dados(
+        'pedido',
+        'cod_cliente, cod_endereco, data_hora_pedido, hora_prevista_entrega, status, valor_total',
+        FORMAT('%s, %s, NOW(), NOW() + INTERVAL ''40 minutes'', %L, %s',
+            v_cod_cliente,
+            v_cod_endereco,
+            'EM ANDAMENTO',
+            0
+        )
     );
+
     RAISE NOTICE 'Pedido criado com sucesso para cliente %', p_nome_cliente;
 END;
 $$;
@@ -109,6 +110,9 @@ AS $$
 DECLARE
     v_cod_produto INT;
     v_qtd_produto INT;
+    v_cod_ingrediente INT;
+    v_qtd_utilizada NUMERIC;
+    v_novo_estoque NUMERIC;
 BEGIN
     -- Para cada produto no pedido
     FOR v_cod_produto, v_qtd_produto IN
@@ -116,17 +120,30 @@ BEGIN
         FROM item_pedido
         WHERE cod_pedido = p_cod_pedido
     LOOP
-        -- Desconta do estoque os ingredientes usados nesse produto, desde que não estejam deletados
-        UPDATE ingrediente i
-        SET qtd_estoque = i.qtd_estoque - (pi.qtd_utilizada * v_qtd_produto)
-        FROM produto_ingrediente pi
-        WHERE pi.cod_produto = v_cod_produto
-          AND pi.cod_ingrediente = i.cod_ingrediente
-          AND i.deletado = FALSE;
+        -- Para cada ingrediente do produto
+        FOR v_cod_ingrediente, v_qtd_utilizada IN
+            SELECT cod_ingrediente, qtd_utilizada
+            FROM produto_ingrediente
+            WHERE cod_produto = v_cod_produto
+        LOOP
+            -- Calcular novo estoque
+            SELECT qtd_estoque - (v_qtd_utilizada * v_qtd_produto)
+            INTO v_novo_estoque
+            FROM ingrediente
+            WHERE cod_ingrediente = v_cod_ingrediente
+              AND deletado = FALSE;
+
+            -- Atualizar usando procedure genérica
+            CALL atualizar_dados(
+                'ingrediente',
+                'qtd_estoque',
+                v_novo_estoque::TEXT,
+                FORMAT('cod_ingrediente = %s AND deletado = FALSE', v_cod_ingrediente)
+            );
+        END LOOP;
     END LOOP;
 END;
 $$;
-
 
 -- Função que calcula o valor total do pedido
 CREATE OR REPLACE FUNCTION calcular_valor_total_pedido(p_cod_pedido INT)
@@ -218,9 +235,12 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
     v_cod_produto INT;
-    v_existe BOOLEAN;
+    v_existe BOOLEAN := FALSE;
     v_status_pedido TEXT;
+    v_nova_quantidade INT;
+    v_novo_valor_total NUMERIC;
 BEGIN
+    -- Verifica status do pedido
     SELECT status INTO v_status_pedido
     FROM pedido
     WHERE cod_pedido = p_cod_pedido;
@@ -231,33 +251,56 @@ BEGIN
         RAISE EXCEPTION 'Pedido % não está em andamento.', p_cod_pedido;
     END IF;
 
+    -- Buscar o código do produto pelo nome
     v_cod_produto := buscar_cod_produto(p_nome_produto);
 
+    -- Verifica se há ingredientes suficientes
     PERFORM verificar_estoque_ingredientes(p_cod_pedido, v_cod_produto, p_quantidade);
 
+    -- Verifica se o item já existe
     SELECT TRUE INTO v_existe
     FROM item_pedido
     WHERE cod_pedido = p_cod_pedido AND cod_produto = v_cod_produto;
 
     IF v_existe THEN
-        UPDATE item_pedido
-        SET quantidade = quantidade + p_quantidade
+        -- Recupera a quantidade atual
+        SELECT quantidade + p_quantidade
+        INTO v_nova_quantidade
+        FROM item_pedido
         WHERE cod_pedido = p_cod_pedido AND cod_produto = v_cod_produto;
+
+        -- Atualiza usando procedure genérica
+        CALL atualizar_dados(
+            'item_pedido',
+            'quantidade',
+            v_nova_quantidade::TEXT,
+            FORMAT('cod_pedido = %s AND cod_produto = %s', p_cod_pedido, v_cod_produto)
+        );
     ELSE
-        INSERT INTO item_pedido (cod_pedido, cod_produto, quantidade)
-        VALUES (p_cod_pedido, v_cod_produto, p_quantidade);
+        -- Insere novo item usando procedure genérica
+        CALL inserir_dados(
+            'item_pedido',
+            'cod_pedido, cod_produto, quantidade',
+            FORMAT('%s, %s, %s', p_cod_pedido, v_cod_produto, p_quantidade)
+        );
     END IF;
 
-    -- Recalcular e atualizar o valor total do pedido
-    UPDATE pedido
-    SET valor_total = calcular_valor_total_pedido(p_cod_pedido)
-    WHERE cod_pedido = p_cod_pedido;
+    -- Recalcula o valor total do pedido
+    v_novo_valor_total := calcular_valor_total_pedido(p_cod_pedido);
+
+    -- Atualiza o valor total com a procedure
+    CALL atualizar_dados(
+        'pedido',
+        'valor_total',
+        v_novo_valor_total::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
 
     RAISE NOTICE 'Item % adicionado ao pedido %.', p_nome_produto, p_cod_pedido;
 END;
 $$;
 
--- FUNÇÃO: Finalizar pedido
+-- -- FUNÇÃO: Finalizar pedido
 CREATE OR REPLACE FUNCTION finalizar_pedido(
     p_cod_pedido INT, 
     p_nome_atendente TEXT, 
@@ -302,13 +345,37 @@ BEGIN
     -- Calcula o valor total do pedido
     v_total := calcular_valor_total_pedido(p_cod_pedido);
 
-    -- Atualiza dados do pedido
-    UPDATE pedido
-    SET status = 'SAIU PARA ENTREGA',
-        valor_total = v_total,
-        cod_atendente = v_cod_atendente,
-        cod_entregador = v_cod_entregador
-    WHERE cod_pedido = p_cod_pedido;
+    -- Atualiza status
+    CALL atualizar_dados(
+        'pedido',
+        'status',
+        '''SAIU PARA ENTREGA''',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    -- Atualiza valor total
+    CALL atualizar_dados(
+        'pedido',
+        'valor_total',
+        v_total::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    -- Atualiza atendente
+    CALL atualizar_dados(
+        'pedido',
+        'cod_atendente',
+        v_cod_atendente::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    -- Atualiza entregador
+    CALL atualizar_dados(
+        'pedido',
+        'cod_entregador',
+        v_cod_entregador::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
 
     RAISE NOTICE 'Pedido % finalizado com sucesso. Total: R$ %', p_cod_pedido, v_total;
 END;
@@ -326,7 +393,7 @@ DECLARE
     v_cod_tipo_pagamento INT;
     v_status_pedido TEXT;
     v_pago BOOLEAN;
-	v_qtd_itens INT;
+    v_qtd_itens INT;
 BEGIN
     -- Verificar se o pedido existe e obter status e se já está pago
     SELECT status, pago INTO v_status_pedido, v_pago
@@ -356,8 +423,8 @@ BEGIN
     IF v_status_pedido != 'EM ANDAMENTO' THEN
         RAISE EXCEPTION 'Pedido % não pode ser pago no status atual: "%".', p_cod_pedido, v_status_pedido;
     END IF;
-	
-	-- Verificar se o pedido possui itens
+
+    -- Verificar se o pedido possui itens
     SELECT COUNT(*) INTO v_qtd_itens
     FROM item_pedido
     WHERE cod_pedido = p_cod_pedido;
@@ -375,13 +442,27 @@ BEGIN
         RAISE EXCEPTION 'Tipo de pagamento "%" não encontrado.', p_nome_tipo_pagamento;
     END IF;
 
-    -- Atualizar pedido: marcar como pago, definir tipo de pagamento, mudar status para 'EM PREPARO'
-    UPDATE pedido
-    SET 
-        pago = TRUE,
-        cod_tipo_pagamento = v_cod_tipo_pagamento,
-        status = 'EM PREPARO'
-    WHERE cod_pedido = p_cod_pedido;
+    -- Atualizar campos usando as procedures
+    CALL atualizar_dados(
+        'pedido',
+        'pago',
+        'TRUE',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    CALL atualizar_dados(
+        'pedido',
+        'cod_tipo_pagamento',
+        v_cod_tipo_pagamento::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    CALL atualizar_dados(
+        'pedido',
+        'status',
+        '''EM PREPARO''',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
 
     RAISE NOTICE 'Pagamento registrado com sucesso para o pedido % usando "%".', p_cod_pedido, p_nome_tipo_pagamento;
 END;
@@ -410,11 +491,21 @@ BEGIN
         RAISE EXCEPTION 'Pedido % não está pronto para entrega (status atual: %).', p_cod_pedido, v_status;
     END IF;
 
-    -- Atualizar status e hora da entrega
-    UPDATE pedido
-    SET status = 'ENTREGUE',
-        hora_entrega_real = NOW()
-    WHERE cod_pedido = p_cod_pedido;
+    -- Atualizar status
+    CALL atualizar_dados(
+        'pedido',
+        'status',
+        '''ENTREGUE''',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    -- Atualizar hora da entrega real 
+    CALL atualizar_dados(
+        'pedido',
+        'hora_entrega_real',
+        '''' || NOW() || '''',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
 
     RAISE NOTICE 'Pedido % marcado como ENTREGUE.', p_cod_pedido;
 END;
@@ -429,6 +520,10 @@ DECLARE
     v_status TEXT;
     v_cod_produto INT;
     v_qtd_produto INT;
+    v_cod_ingrediente INT;
+    v_qtd_utilizada NUMERIC;
+    v_estoque_atual NUMERIC;
+    v_novo_estoque NUMERIC;
 BEGIN
     -- Buscar status atual do pedido
     SELECT status INTO v_status
@@ -450,18 +545,34 @@ BEGIN
             FROM item_pedido
             WHERE cod_pedido = p_cod_pedido
         LOOP
-            UPDATE ingrediente i
-            SET qtd_estoque = i.qtd_estoque + (pi.qtd_utilizada * v_qtd_produto)
-            FROM produto_ingrediente pi
-            WHERE pi.cod_produto = v_cod_produto
-              AND pi.cod_ingrediente = i.cod_ingrediente;
+            FOR v_cod_ingrediente, v_qtd_utilizada IN
+                SELECT cod_ingrediente, qtd_utilizada
+                FROM produto_ingrediente
+                WHERE cod_produto = v_cod_produto
+            LOOP
+                SELECT qtd_estoque INTO v_estoque_atual
+                FROM ingrediente
+                WHERE cod_ingrediente = v_cod_ingrediente;
+
+                v_novo_estoque := v_estoque_atual + (v_qtd_utilizada * v_qtd_produto);
+
+                CALL atualizar_dados(
+                    'ingrediente',
+                    'qtd_estoque',
+                    v_novo_estoque::TEXT,
+                    FORMAT('cod_ingrediente = %s', v_cod_ingrediente)
+                );
+            END LOOP;
         END LOOP;
     END IF;
 
-    -- Cancelar pedido
-    UPDATE pedido
-    SET status = 'CANCELADO'
-    WHERE cod_pedido = p_cod_pedido;
+    -- Cancelar pedido (atualizar status)
+    CALL atualizar_dados(
+        'pedido',
+        'status',
+        '''CANCELADO''',
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
 
     RAISE NOTICE 'Pedido % cancelado. Ingredientes devolvidos ao estoque.', p_cod_pedido;
 END;

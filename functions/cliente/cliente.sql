@@ -1,4 +1,4 @@
--- FUNÇÃO: associar cliente a endereço já cadastrado
+-- FUNÇÃO: associar cliente a endereço já cadastrado 
 CREATE OR REPLACE FUNCTION associar_cliente_endereco(
     p_nome_cliente TEXT,
     p_cod_endereco INT
@@ -9,7 +9,7 @@ AS $$
 DECLARE
     v_cod_cliente INT;
 BEGIN
-    -- Buscar cliente pelo nome
+    -- Busca cliente pelo nome
     SELECT cod_cliente INTO v_cod_cliente
     FROM cliente
     WHERE nome ILIKE p_nome_cliente AND ativo = TRUE;
@@ -18,7 +18,7 @@ BEGIN
         RAISE EXCEPTION 'Cliente "%" não encontrado ou inativo.', p_nome_cliente;
     END IF;
 
-    -- Verificar se o endereço existe 
+    -- Verifica se o endereço existe 
     PERFORM 1
     FROM endereco
     WHERE cod_endereco = p_cod_endereco AND deletado = FALSE;
@@ -27,7 +27,7 @@ BEGIN
         RAISE EXCEPTION 'Endereço código % não encontrado ou está deletado.', p_cod_endereco;
     END IF;
 
-    -- Verificar se já existe associação
+    -- Verifica se já existe associação
     PERFORM 1
     FROM cliente_endereco
     WHERE cod_cliente = v_cod_cliente AND cod_endereco = p_cod_endereco;
@@ -37,9 +37,11 @@ BEGIN
         RETURN;
     END IF;
 
-    -- Realizar associação
-    INSERT INTO cliente_endereco (cod_cliente, cod_endereco)
-    VALUES (v_cod_cliente, p_cod_endereco);
+    CALL inserir_dados(
+        'cliente_endereco',
+        'cod_cliente, cod_endereco',
+        FORMAT('%s, %s', v_cod_cliente, p_cod_endereco)
+    );
 
     RAISE NOTICE 'Cliente "%" associado ao endereço código % com sucesso.', p_nome_cliente, p_cod_endereco;
 END;
