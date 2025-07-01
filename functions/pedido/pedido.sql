@@ -7,10 +7,10 @@ DECLARE
     v_cod_cliente INT;
     v_cod_endereco INT;
 BEGIN
-    -- Buscar cliente ativo
+    -- Buscar cliente não deletado
     SELECT cod_cliente INTO v_cod_cliente
     FROM cliente
-    WHERE nome ILIKE p_nome_cliente AND ativo = TRUE;
+    WHERE nome ILIKE p_nome_cliente AND deletado = FALSE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Cliente não encontrado ou inativo.';
@@ -65,6 +65,15 @@ BEGIN
         FROM produto_ingrediente
         WHERE cod_produto = p_cod_produto
     LOOP
+        -- Verifica se o ingrediente não está deletado
+        PERFORM 1
+        FROM ingrediente
+        WHERE cod_ingrediente = v_cod_ingrediente AND deletado = FALSE;
+
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'Ingrediente código % não encontrado ou deletado.', v_cod_ingrediente;
+        END IF;
+
         -- Calcula quanto desse ingrediente já está sendo utilizado no pedido atual
         SELECT COALESCE(SUM(ip.quantidade * pi.qtd_utilizada), 0)
         INTO v_qtd_total_pedido
@@ -80,7 +89,7 @@ BEGIN
         -- Busca estoque atual do ingrediente
         SELECT qtd_estoque, nome INTO v_estoque, v_nome_ingrediente
         FROM ingrediente
-        WHERE cod_ingrediente = v_cod_ingrediente;
+        WHERE cod_ingrediente = v_cod_ingrediente AND deletado = FALSE;
 
         -- Verifica se há estoque suficiente
         IF v_estoque < v_qtd_necessaria THEN
@@ -107,15 +116,17 @@ BEGIN
         FROM item_pedido
         WHERE cod_pedido = p_cod_pedido
     LOOP
-        -- Desconta do estoque os ingredientes usados nesse produto
+        -- Desconta do estoque os ingredientes usados nesse produto, desde que não estejam deletados
         UPDATE ingrediente i
         SET qtd_estoque = i.qtd_estoque - (pi.qtd_utilizada * v_qtd_produto)
         FROM produto_ingrediente pi
         WHERE pi.cod_produto = v_cod_produto
-          AND pi.cod_ingrediente = i.cod_ingrediente;
+          AND pi.cod_ingrediente = i.cod_ingrediente
+          AND i.deletado = FALSE;
     END LOOP;
 END;
 $$;
+
 
 -- Função que calcula o valor total do pedido
 CREATE OR REPLACE FUNCTION calcular_valor_total_pedido(p_cod_pedido INT)
@@ -146,7 +157,7 @@ DECLARE
 BEGIN
     SELECT cod_atendente INTO v_cod
     FROM atendente
-    WHERE nome ILIKE p_nome AND ativo = TRUE;
+    WHERE nome ILIKE p_nome AND deletado = FALSE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Atendente % não encontrado ou inativo.', p_nome;
@@ -166,7 +177,7 @@ DECLARE
 BEGIN
     SELECT cod_entregador INTO v_cod
     FROM entregador
-    WHERE nome ILIKE p_nome AND ativo = TRUE;
+    WHERE nome ILIKE p_nome AND deletado = FALSE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Entregador % não encontrado ou inativo.', p_nome;
