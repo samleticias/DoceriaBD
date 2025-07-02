@@ -63,7 +63,6 @@ BEGIN
 END;
 $$;
 
-
 -- ============================================
 -- FUNÇÃO: Relatório de Status dos Pedidos
 -- Retorna a quantidade de pedidos agrupada por status
@@ -142,7 +141,6 @@ BEGIN
 END;
 $$;
 
-
 -- ============================================
 -- FUNÇÃO: Relatório de Controle de Estoque de Ingredientes (com limite parametrizado)
 -- Lista ingredientes com estoque abaixo do valor informado.
@@ -215,5 +213,176 @@ END;
 $$;
 
 
+-- ============================================
+-- FUNÇÃO: Relatório de Desempenho dos Funcionários
+-- Retorna o número de pedidos ENTREGUES atribuídos a cada
+-- atendente e entregador.
+-- Se não houver pedidos entregues cadastrados, retorna aviso.
+-- ============================================
+CREATE OR REPLACE FUNCTION relatorio_desempenho_funcionarios()
+RETURNS TABLE (
+    funcionario TEXT,
+    funcao TEXT,
+    qtd_pedidos INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_pedidos INT;
+BEGIN
+    -- Valida se há pedidos ENTREGUES
+    SELECT COUNT(*) INTO v_total_pedidos
+    FROM pedido
+    WHERE status = 'ENTREGUE';
+
+    IF v_total_pedidos = 0 THEN
+        RAISE EXCEPTION 'Não há pedidos ENTREGUES cadastrados no sistema.';
+    END IF;
+
+    -- Pedidos atendidos por atendente
+    RETURN QUERY
+    SELECT 
+        a.nome::TEXT,
+        'Atendente',
+        COUNT(p.cod_pedido)::INT
+    FROM pedido p
+    JOIN atendente a ON p.cod_atendente = a.cod_atendente
+    WHERE p.status = 'ENTREGUE'
+      AND a.deletado = FALSE
+    GROUP BY a.nome
+
+    UNION ALL
+
+    -- Pedidos entregues por entregador
+    SELECT 
+        e.nome::TEXT,
+        'Entregador',
+        COUNT(p.cod_pedido)::INT
+    FROM pedido p
+    JOIN entregador e ON p.cod_entregador = e.cod_entregador
+    WHERE p.status = 'ENTREGUE'
+      AND e.deletado = FALSE
+    GROUP BY e.nome;
+
+END;
+$$;
+
+
+-- ============================================
+-- FUNÇÃO: Relatório de Pedidos Cancelados e Motivos
+-- Lista os pedidos com status CANCELADO, exibindo 
+-- código, cliente, data e motivo (observação).
+-- ============================================
+CREATE OR REPLACE FUNCTION relatorio_pedidos_cancelados()
+RETURNS TABLE (
+    cod_pedido INT,
+    cliente TEXT,
+    data_pedido TIMESTAMP,
+    motivo TEXT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_cancelados INT;
+BEGIN
+    -- Valida se há pedidos cancelados
+    SELECT COUNT(*) INTO v_total_cancelados
+    FROM pedido
+    WHERE status = 'CANCELADO';
+
+    IF v_total_cancelados = 0 THEN
+        RAISE EXCEPTION 'Nenhum pedido cancelado registrado no sistema.';
+    END IF;
+
+    -- Retorna os pedidos cancelados
+    RETURN QUERY
+    SELECT 
+        p.cod_pedido::INT,
+        c.nome::TEXT,
+        p.data_hora_pedido::TIMESTAMP,
+        COALESCE(p.observacao, 'Motivo não informado')::TEXT
+    FROM pedido p
+    JOIN cliente c ON p.cod_cliente = c.cod_cliente
+    WHERE p.status = 'CANCELADO'
+    ORDER BY p.data_hora_pedido DESC;
+
+END;
+$$;
+
+
+-- ============================================
+-- FUNÇÃO: Relatório Financeiro Geral
+-- Retorna o faturamento total, quantidade de pedidos pagos,
+-- pedidos pendentes e a distribuição de vendas por forma
+-- de pagamento.
+-- ============================================
+CREATE OR REPLACE FUNCTION relatorio_financeiro_geral()
+RETURNS TABLE (
+    tipo_pagamento TEXT,
+    qtd_pedidos INT,
+    valor_total NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_pedidos INT;
+BEGIN
+    -- Verificar se há pedidos no sistema
+    SELECT COUNT(*) INTO v_total_pedidos
+    FROM pedido;
+
+    IF v_total_pedidos = 0 THEN
+        RAISE EXCEPTION 'Não existem pedidos cadastrados no sistema.';
+    END IF;
+
+    -- Retornar resumo financeiro agrupado por forma de pagamento
+    RETURN QUERY
+    SELECT 
+        COALESCE(tp.nome, 'Não informado')::TEXT AS tipo_pagamento,
+        COUNT(p.cod_pedido)::INT AS qtd_pedidos,
+        COALESCE(SUM(p.valor_total), 0)::NUMERIC AS valor_total
+    FROM pedido p
+    LEFT JOIN tipo_pagamento tp ON p.cod_tipo_pagamento = tp.cod_tipo_pagamento
+    WHERE p.pago = TRUE
+    GROUP BY tp.nome
+    ORDER BY valor_total DESC;
+
+END;
+$$;
+
+
+-- ============================================
+-- FUNÇÃO: Resumo de Totais Financeiros
+-- Retorna o faturamento total, pedidos pagos e pendentes.
+-- ============================================
+CREATE OR REPLACE FUNCTION resumo_financeiro_totais()
+RETURNS TABLE (
+    faturamento_total NUMERIC,
+    pedidos_pagos INT,
+    pedidos_pendentes INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_pedidos INT;
+BEGIN
+    -- Verificar se há pedidos
+    SELECT COUNT(*) INTO v_total_pedidos
+    FROM pedido;
+
+    IF v_total_pedidos = 0 THEN
+        RAISE EXCEPTION 'Nenhum pedido cadastrado.';
+    END IF;
+
+    -- Retornar os totais usando CASE WHEN
+    RETURN QUERY
+    SELECT 
+        COALESCE(SUM(CASE WHEN pago = TRUE THEN valor_total ELSE 0 END), 0) AS faturamento_total,
+        COUNT(CASE WHEN pago = TRUE THEN 1 END)::INT AS pedidos_pagos,
+        COUNT(CASE WHEN pago = FALSE THEN 1 END)::INT AS pedidos_pendentes
+    FROM pedido;
+
+END;
+$$;
 
 
