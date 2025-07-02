@@ -295,8 +295,7 @@ $$;
 -- -- FUNÇÃO: Finalizar pedido
 CREATE OR REPLACE FUNCTION finalizar_pedido(
     p_cod_pedido INT, 
-    p_nome_atendente TEXT, 
-    p_nome_entregador TEXT
+    p_nome_atendente TEXT
 )
 RETURNS VOID
 LANGUAGE plpgsql
@@ -304,7 +303,6 @@ AS $$
 DECLARE
     v_total NUMERIC;
     v_cod_atendente INT;
-    v_cod_entregador INT;
     v_status TEXT;
 BEGIN
     -- Verifica se o pedido existe e obtém o status atual
@@ -327,9 +325,8 @@ BEGIN
         RAISE EXCEPTION 'Pedido % está em andamento e deve ser pago antes de finalizar. Status: "%".', p_cod_pedido, v_status;
     END IF;
 
-    -- Busca os códigos dos funcionários envolvidos
+    -- Busca os códigos do atendente envolvido
     v_cod_atendente := buscar_cod_atendente(p_nome_atendente);
-    v_cod_entregador := buscar_cod_entregador(p_nome_entregador);
 
     -- Debita ingredientes do estoque
     PERFORM descontar_estoque_ingredientes(p_cod_pedido);
@@ -358,14 +355,6 @@ BEGIN
         'pedido',
         'cod_atendente',
         v_cod_atendente::TEXT,
-        FORMAT('cod_pedido = %s', p_cod_pedido)
-    );
-
-    -- Atualiza entregador
-    CALL atualizar_dados(
-        'pedido',
-        'cod_entregador',
-        v_cod_entregador::TEXT,
         FORMAT('cod_pedido = %s', p_cod_pedido)
     );
 
@@ -461,12 +450,16 @@ END;
 $$;
 
 -- FUNÇÃO: Marcar pedido como ENTREGUE
-CREATE OR REPLACE FUNCTION entregar_pedido(p_cod_pedido INT)
+CREATE OR REPLACE FUNCTION entregar_pedido(
+	p_cod_pedido INT,
+	p_nome_entregador TEXT
+)
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_status TEXT;
+	v_cod_entregador INT;
 BEGIN
     -- Buscar status atual do pedido
     SELECT status INTO v_status
@@ -482,6 +475,9 @@ BEGIN
     ELSIF v_status != 'SAIU PARA ENTREGA' THEN
         RAISE EXCEPTION 'Pedido % não está pronto para entrega (status atual: %).', p_cod_pedido, v_status;
     END IF;
+
+	-- busca pelo código do entregador envolvido
+	v_cod_entregador := buscar_cod_entregador(p_nome_entregador);
 
     -- Atualizar status
     CALL atualizar_dados(
@@ -499,12 +495,23 @@ BEGIN
         FORMAT('cod_pedido = %s', p_cod_pedido)
     );
 
+	-- Atualiza entregador
+    CALL atualizar_dados(
+        'pedido',
+        'cod_entregador',
+        v_cod_entregador::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
     RAISE NOTICE 'Pedido % marcado como ENTREGUE.', p_cod_pedido;
 END;
 $$;
 
 -- FUNÇÃO: Cancelar pedido
-CREATE OR REPLACE FUNCTION cancelar_pedido(p_cod_pedido INT)
+CREATE OR REPLACE FUNCTION cancelar_pedido(
+	p_cod_pedido INT,
+	p_motivo_cancelamento VARCHAR(255) DEFAULT NULL
+)
 RETURNS VOID
 LANGUAGE plpgsql
 AS $$
@@ -565,6 +572,16 @@ BEGIN
         '''CANCELADO''',
         FORMAT('cod_pedido = %s', p_cod_pedido)
     );
+
+	-- Atualizar observação se motivo foi passado
+    IF p_motivo_cancelamento IS NOT NULL THEN
+        CALL atualizar_dados(
+            'pedido',
+            'observacao',
+            FORMAT('''%s''', p_motivo_cancelamento),
+            FORMAT('cod_pedido = %s', p_cod_pedido)
+        );
+    END IF;
 
     RAISE NOTICE 'Pedido % cancelado. Ingredientes devolvidos ao estoque.', p_cod_pedido;
 END;
