@@ -154,7 +154,7 @@ DECLARE
     v_total NUMERIC;
 BEGIN
     -- Soma o total multiplicando quantidade x valor unitário dos produtos do pedido
-    SELECT SUM(ip.quantidade * p.valor_unitario) INTO v_total
+    SELECT COALESCE(SUM(ip.quantidade * p.valor_unitario), 0) INTO v_total 
     FROM item_pedido ip
     JOIN produto p ON p.cod_produto = ip.cod_produto
     WHERE ip.cod_pedido = p_cod_pedido;
@@ -285,16 +285,8 @@ BEGIN
         );
     END IF;
 
-    -- Recalcula o valor total do pedido
-    v_novo_valor_total := calcular_valor_total_pedido(p_cod_pedido);
-
-    -- Atualiza o valor total com a procedure
-    CALL atualizar_dados(
-        'pedido',
-        'valor_total',
-        v_novo_valor_total::TEXT,
-        FORMAT('cod_pedido = %s', p_cod_pedido)
-    );
+    -- Recalcula valor total do pedido
+	PERFORM atualizar_valor_total_pedido(p_cod_pedido);
 
     RAISE NOTICE 'Item % adicionado ao pedido %.', p_nome_produto, p_cod_pedido;
 END;
@@ -600,5 +592,138 @@ BEGIN
     FROM pedido p
     JOIN cliente c ON p.cod_cliente = c.cod_cliente
     WHERE c.nome ILIKE p_nome_cliente AND p.status != 'ENTREGUE';
+END;
+$$;
+
+-- FUNÇÃO: Recalcula o valor total de um pedido e atualiza na tabela pedido
+CREATE OR REPLACE FUNCTION atualizar_valor_total_pedido(p_cod_pedido INT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_valor_total NUMERIC := 0;
+BEGIN
+    -- Calcular o valor total somando valor_unitario * quantidade de todos os itens do pedido
+    SELECT COALESCE(SUM(p.valor_unitario * ip.quantidade), 0)
+    INTO v_valor_total
+    FROM item_pedido ip
+    JOIN produto p ON p.cod_produto = ip.cod_produto
+    WHERE ip.cod_pedido = p_cod_pedido;
+
+    -- Atualiza o valor_total na tabela pedido
+    CALL atualizar_dados(
+        'pedido',
+        'valor_total',
+        v_valor_total::TEXT,
+        FORMAT('cod_pedido = %s', p_cod_pedido)
+    );
+
+    RAISE NOTICE 'Valor total do pedido % atualizado para R$ %.2f.', p_cod_pedido, v_valor_total;
+END;
+$$;
+
+-- FUNÇÃO: Remover item de um pedido
+CREATE OR REPLACE FUNCTION remover_item_pedido(
+	p_cod_pedido INT,
+    p_nome_produto TEXT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	v_cod_produto INT;
+BEGIN
+	-- Verificar se o pedido existe e está EM ANDAMENTO
+	PERFORM 1 
+	FROM pedido
+	WHERE cod_pedido = p_cod_pedido and status = 'EM ANDAMENTO';
+	
+	IF NOT FOUND THEN
+		RAISE EXCEPTION 'Pedido de código % não encontrado ou não está EM ANDAMENTO.', p_cod_pedido;
+	END IF;
+	
+	-- Buscar produto não deletado
+	SELECT cod_produto INTO v_cod_produto 
+	FROM produto
+	WHERE nome ILIKE p_nome_produto AND deletado = FALSE;
+	
+	IF NOT FOUND THEN
+        RAISE EXCEPTION 'Produto "%" não encontrado ou deletado.', p_nome_produto;
+    END IF;
+	
+	-- Verificar se o item existe no pedido
+    PERFORM 1
+    FROM item_pedido
+    WHERE cod_pedido = p_cod_pedido
+      AND cod_produto = v_cod_produto;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Item "%" não encontrado no pedido %.', p_nome_produto, p_cod_pedido;
+    END IF;
+	
+	 -- Deletar item do pedido
+    DELETE FROM item_pedido
+    WHERE cod_pedido = p_cod_pedido
+    AND cod_produto= v_cod_produto;
+
+    -- Atualizar valor total do pedido
+	PERFORM atualizar_valor_total_pedido(p_cod_pedido);
+	
+	RAISE NOTICE 'Item "%" removido do pedido %.', p_nome_produto, p_cod_pedido;
+END;
+$$;
+
+-- FUNÇÃO: Editar a quantidade de um item em um pedido
+CREATE OR REPLACE FUNCTION editar_quantidade_item_pedido(
+    p_cod_pedido INT,
+    p_nome_produto TEXT,
+    p_nova_quantidade INT
+)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_cod_produto INT;
+BEGIN
+    -- Verificar se o pedido existe e está EM ANDAMENTO
+    PERFORM 1
+    FROM pedido
+    WHERE cod_pedido = p_cod_pedido AND status = 'EM ANDAMENTO';
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Pedido de código % não encontrado ou não está EM ANDAMENTO.', p_cod_pedido;
+    END IF;
+
+    -- Buscar produto não deletado
+    SELECT cod_produto INTO v_cod_produto
+    FROM produto
+    WHERE nome ILIKE p_nome_produto AND deletado = FALSE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Produto "%" não encontrado ou deletado.', p_nome_produto;
+    END IF;
+
+    -- Verificar se o item existe no pedido
+    PERFORM 1
+    FROM item_pedido 
+    WHERE cod_pedido = p_cod_pedido
+      AND cod_produto = v_cod_produto;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Item "%" não encontrado no pedido %.', p_nome_produto, p_cod_pedido;
+    END IF;
+
+    -- Atualizar quantidade usando procedure genérica
+    CALL atualizar_dados(
+        'item_pedido',
+        'quantidade',
+        p_nova_quantidade::TEXT,
+        FORMAT('cod_pedido = %s AND cod_produto = %s', p_cod_pedido, v_cod_produto)
+    );
+
+	-- Atualizar valor total do pedido
+	PERFORM atualizar_valor_total_pedido(p_cod_pedido);
+
+    RAISE NOTICE 'Quantidade do item "%" no pedido % atualizada para %.', p_nome_produto, p_cod_pedido, p_nova_quantidade;
 END;
 $$;
