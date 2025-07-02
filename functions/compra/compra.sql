@@ -31,6 +31,32 @@ BEGIN
 END;
 $$;
 
+-- FUNÇÃO: Recalcula o valor total de uma compra e atualiza na tabela compra
+CREATE OR REPLACE FUNCTION atualizar_valor_total_compra(p_cod_compra INT)
+RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_valor_total NUMERIC := 0;
+BEGIN
+    -- Calcular o valor total somando valor_unitario * quantidade de todos os itens da compra
+    SELECT COALESCE(SUM(valor_unitario * quantidade), 0)
+    INTO v_valor_total
+    FROM item_compra
+    WHERE cod_compra = p_cod_compra;
+
+    -- Atualizar valor_total na tabela compra
+    CALL atualizar_dados(
+        'compra',
+        'valor_total',
+        v_valor_total::TEXT,
+        FORMAT('cod_compra = %s', p_cod_compra)
+    );
+
+    RAISE NOTICE 'Valor total da compra % atualizado para R$ %.2f.', p_cod_compra, v_valor_total;
+END;
+$$;
+
 
 -- FUNÇÃO: Adicionar novo item em um pedido
 CREATE OR REPLACE FUNCTION adicionar_item_compra(
@@ -101,6 +127,9 @@ BEGIN
         RAISE NOTICE 'Item "%" adicionado à compra %.', p_nome_ingrediente, p_cod_compra;
     END IF;
 
+	-- Recalcula valor total da compra
+	PERFORM atualizar_valor_total_compra(p_cod_compra);
+
 END;
 $$;
 
@@ -148,6 +177,9 @@ BEGIN
     DELETE FROM item_compra
     WHERE cod_compra = p_cod_compra
       AND cod_ingrediente = v_cod_ingrediente;
+
+	-- Atualizar valor total da compra
+	PERFORM atualizar_valor_total_compra(p_cod_compra);
 
     RAISE NOTICE 'Item "%" removido da compra %.', p_nome_ingrediente, p_cod_compra;
 END;
@@ -200,6 +232,9 @@ BEGIN
         p_nova_quantidade::TEXT,
         FORMAT('cod_compra = %s AND cod_ingrediente = %s', p_cod_compra, v_cod_ingrediente)
     );
+
+	-- Atualizar valor total da compra
+	PERFORM atualizar_valor_total_compra(p_cod_compra);
 
     RAISE NOTICE 'Quantidade do item "%" na compra % atualizada para %.', p_nome_ingrediente, p_cod_compra, p_nova_quantidade;
 END;
