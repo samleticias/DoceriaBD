@@ -141,38 +141,6 @@ BEGIN
 END;
 $$;
 
--- ============================================
--- FUNÇÃO: Relatório de Controle de Estoque de Ingredientes (com limite parametrizado)
--- Lista ingredientes com estoque abaixo do valor informado.
--- ============================================
-CREATE OR REPLACE FUNCTION relatorio_estoque_baixo(p_limite NUMERIC)
-RETURNS TABLE (
-    ingrediente TEXT,
-	unidade TEXT,
-    qtd_em_estoque NUMERIC(10,2)
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    -- Validação de limite mínimo
-    IF p_limite IS NULL OR p_limite < 0 THEN
-        RAISE EXCEPTION 'Informe um valor de limite de estoque válido.';
-    END IF;
-
-    -- Retornar ingredientes com estoque abaixo do valor informado
-    RETURN QUERY
-    SELECT 
-        nome::TEXT,
-		unidade_medida::TEXT,
-        qtd_estoque::NUMERIC
-    FROM ingrediente
-    WHERE qtd_estoque < p_limite
-      AND deletado = FALSE
-    ORDER BY qtd_estoque ASC;
-
-END;
-$$;
-
 
 -- ============================================
 -- FUNÇÃO: Relatório de Compras por Fornecedor
