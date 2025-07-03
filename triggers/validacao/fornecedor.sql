@@ -1,11 +1,11 @@
 -- ============================================
--- FUNÇÃO: Validar dados da tabela ENTREGADOR
+-- FUNÇÃO: Validar dados da tabela FORNECEDOR
 -- Regras:
 -- - Nome obrigatório
--- - CPF obrigatório, 11 dígitos e único
--- - Telefone obrigatório e 11 dígitos
+-- - Email obrigatório, formato válido e único
+-- - Telefone obrigatório, 11 dígitos
 -- ============================================
-CREATE OR REPLACE FUNCTION validar_entregador()
+CREATE OR REPLACE FUNCTION validar_fornecedor()
 RETURNS TRIGGER AS $$
 DECLARE
     v_contador INT;
@@ -15,19 +15,19 @@ BEGIN
         RAISE EXCEPTION 'O campo "nome" é obrigatório.';
     END IF;
 
-    -- Valida CPF
-    IF NEW.cpf IS NULL OR LENGTH(TRIM(NEW.cpf)) <> 11 THEN
-        RAISE EXCEPTION 'O campo "CPF" é obrigatório e deve conter exatamente 11 dígitos.';
+    -- Valida email
+    IF NEW.email IS NULL OR LENGTH(TRIM(NEW.email)) = 0 THEN
+        RAISE EXCEPTION 'O campo "email" é obrigatório.';
     END IF;
 
-    -- Verifica unicidade do CPF
+    -- Verifica unicidade do email
     SELECT COUNT(*) INTO v_contador
-    FROM entregador
-    WHERE cpf = NEW.cpf
-      AND cod_entregador <> COALESCE(OLD.cod_entregador, 0);
+    FROM fornecedor
+    WHERE email = NEW.email
+      AND cod_fornecedor <> COALESCE(OLD.cod_fornecedor, 0);
 
     IF v_contador > 0 THEN
-        RAISE EXCEPTION 'Já existe um entregador cadastrado com esse CPF.';
+        RAISE EXCEPTION 'Já existe um fornecedor cadastrado com esse email.';
     END IF;
 
     -- Valida telefone
@@ -41,8 +41,9 @@ $$ LANGUAGE plpgsql;
 
 
 -- ============================================
--- TRIGGER: Chama a validação ao inserir ou atualizar entregador
+-- TRIGGER: Chama a validação ao inserir ou atualizar fornecedor
 -- ============================================
-CREATE TRIGGER trg_validar_entregador
-BEFORE INSERT OR UPDATE ON entregador
-FOR EACH ROW EXECUTE FUNCTION validar_entregador();
+CREATE TRIGGER trg_validar_fornecedor
+BEFORE INSERT OR UPDATE ON fornecedor
+FOR EACH ROW EXECUTE FUNCTION validar_fornecedor();
+
