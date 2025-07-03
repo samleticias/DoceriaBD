@@ -1,0 +1,1 @@
+-- Validações já são feitas na função adicionar_item_pedido.
