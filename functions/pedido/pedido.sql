@@ -179,6 +179,11 @@ DECLARE
     v_nova_quantidade INT;
     v_novo_valor_total NUMERIC;
 BEGIN
+    -- Verifica se a quantidade do item é maior que zero
+    IF p_quantidade <= 0 THEN   
+        RAISE EXCEPTION 'A quantidade do item deve ser maior que zero.';
+    END IF;
+
     -- Verifica status do pedido
     SELECT status INTO v_status_pedido
     FROM pedido
