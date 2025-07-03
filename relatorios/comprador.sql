@@ -95,7 +95,18 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total INT;
 BEGIN
+    -- Verificar se existem pedidos com status finalizado/entregue
+    SELECT COUNT(*) INTO v_total
+    FROM pedido
+    WHERE status IN ('SAIU PARA ENTREGA', 'ENTREGUE');
+
+    IF v_total = 0 THEN
+        RAISE EXCEPTION 'Não há pedidos finalizados ou entregues para gerar o relatório de consumo.';
+    END IF;
+
     RETURN QUERY
     SELECT 
         i.nome::TEXT,
