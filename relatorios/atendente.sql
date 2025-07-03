@@ -1,0 +1,162 @@
+-- ============================================
+-- FUNÇÃO: Relatório de Pedidos Abertos do Cliente
+-- Lista os pedidos não finalizados de um cliente informado
+-- ============================================
+CREATE OR REPLACE FUNCTION relatorio_pedidos_abertos_cliente(p_nome_cliente TEXT)
+RETURNS TABLE (
+    cod_pedido INT,
+    data_hora_pedido TIMESTAMP,
+    status TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.cod_pedido,
+        p.data_hora_pedido,
+        p.status::TEXT  
+    FROM pedido p
+    JOIN cliente c ON p.cod_cliente = c.cod_cliente
+    WHERE c.nome ILIKE '%' || p_nome_cliente || '%'
+      AND p.status NOT IN ('ENTREGUE', 'CANCELADO')
+    ORDER BY p.data_hora_pedido DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Histórico de Pedidos do Cliente
+-- Lista todos os pedidos de um cliente, com itens e produtos
+-- ============================================
+CREATE OR REPLACE FUNCTION historico_pedidos_cliente(p_nome_cliente TEXT)
+RETURNS TABLE (
+	cod_pedido INT,
+	data_pedido TIMESTAMP,
+	produto TEXT,
+	quantidade INT,
+	valor_unitario NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	RETURN QUERY
+		SELECT 
+			p.cod_pedido, 
+			p.data_hora_pedido,
+			pr.nome::TEXT,
+			ip.quantidade,
+			pr.valor_unitario
+		FROM pedido p
+		JOIN cliente c ON p.cod_cliente = c.cod_cliente
+		JOIN item_pedido ip ON p.cod_pedido = ip.cod_pedido
+		JOIN produto pr ON ip.cod_produto = pr.cod_produto
+		WHERE c.nome ILIKE p_nome_cliente
+		ORDER BY p.data_hora_pedido DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Produtos Mais Solicitados pelo Cliente
+-- Retorna ranking dos produtos mais pedidos por um cliente
+-- ============================================
+CREATE OR REPLACE FUNCTION produtos_mais_solicitados_cliente(p_nome_cliente TEXT)
+RETURNS TABLE (
+	produto TEXT,
+	total_quantidade INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	RETURN QUERY
+		SELECT 
+			pr.nome::TEXT,
+			SUM(ip.quantidade)::INT as total_quantidade
+		FROM pedido p 
+		JOIN cliente c ON p.cod_cliente = c.cod_cliente
+		JOIN item_pedido ip ON p.cod_pedido = ip.cod_pedido
+		JOIN produto pr ON ip.cod_produto = pr.cod_produto
+		WHERE c.nome ILIKE p_nome_cliente
+		GROUP BY pr.nome
+		ORDER BY total_quantidade DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Pedidos Cancelados pelo Cliente
+-- Lista os pedidos cancelados de um cliente
+-- ============================================
+CREATE OR REPLACE FUNCTION pedidos_cancelados_cliente(p_nome_cliente TEXT)
+RETURNS TABLE (
+	cod_pedido INT,
+    data_pedido TIMESTAMP,
+    motivo TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+	RETURN QUERY
+		SELECT 
+			p.cod_pedido,
+			p.data_hora_pedido,
+			COALESCE(p.observacao::TEXT, 'Motivo não informado')
+		FROM pedido p
+		JOIN cliente c ON p.cod_cliente = c.cod_cliente
+		WHERE c.nome ILIKE p_nome_cliente
+		AND p.status = 'CANCELADO'
+		ORDER BY p.data_hora_pedido DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Resumo de Pagamentos Recebidos
+-- Mostra quantidade e valor dos pedidos pagos por tipo de pagamento
+-- ============================================
+CREATE OR REPLACE FUNCTION resumo_pagamentos_recebidos()
+RETURNS TABLE (
+    tipo_pagamento TEXT,
+    qtd_pedidos INT,
+    valor_total NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT
+            tp.nome::TEXT AS tipo_pagamento,
+            COUNT(p.cod_pedido)::INT AS qtd_pedidos,
+            SUM(p.valor_total)::NUMERIC AS valor_total
+        FROM pedido p
+        LEFT JOIN tipo_pagamento tp ON p.cod_tipo_pagamento = tp.cod_tipo_pagamento
+        WHERE p.pago = TRUE
+        GROUP BY tp.nome
+        ORDER BY valor_total DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Pedidos Pendentes de Pagamento
+-- Lista os pedidos em andamento que ainda não foram pagos
+-- ============================================
+CREATE OR REPLACE FUNCTION pedidos_pendentes_pagamento()
+RETURNS TABLE (
+    cod_pedido INT,
+    cliente TEXT,
+    data_pedido TIMESTAMP,
+    valor_total NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.cod_pedido,
+        c.nome::TEXT,
+        p.data_hora_pedido,
+        p.valor_total
+    FROM pedido p
+    JOIN cliente c ON p.cod_cliente = c.cod_cliente
+    WHERE p.status = 'EM ANDAMENTO'
+      AND p.pago = FALSE
+    ORDER BY p.data_hora_pedido DESC;
+END;
+$$;
