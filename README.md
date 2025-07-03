@@ -34,23 +34,6 @@ DoceriaBD é um banco de dados relacional desenvolvido em **PostgreSQL** para ge
   - `unidade_medida_enum` para unidades dos ingredientes
   - `status_compra_enum` para status das compras
 
-## 🚀 Como usar
-
-1. Clone o repositório:
-
-   ```bash
-     git clone https://github.com/samleticias/DoceriaBD.git
-     cd DoceriaBD
-   ```
-   
-2. Execute o script SQL para criar as tabelas, tipos e funções:
-
-   ```bash
-     psql -U seu_usuario -d seu_banco -f doceria_schema.sql
-   ```
-
-3. Utilize as funções PL/pgSQL para gerar relatórios e gerenciar dados conforme a necessidade.
-
 ## 📊 Relatórios Disponíveis
 
 - **`relatorio_estoque_baixo(p_limite NUMERIC)`**  
