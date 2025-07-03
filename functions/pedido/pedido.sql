@@ -547,7 +547,7 @@ BEGIN
         p.valor_total
     FROM pedido p
     JOIN cliente c ON p.cod_cliente = c.cod_cliente
-    WHERE c.nome ILIKE p_nome_cliente AND p.status != 'ENTREGUE';
+    WHERE c.nome ILIKE p_nome_cliente AND (p.status != 'ENTREGUE' AND p.status != 'CANCELADO');
 END;
 $$;
 
