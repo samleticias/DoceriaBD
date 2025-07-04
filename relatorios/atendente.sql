@@ -10,7 +10,27 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_cod_cliente INT;
+    v_existe BOOLEAN;
 BEGIN
+    -- Valida se cliente existe e está ativo
+	SELECT cod_cliente INTO v_cod_cliente FROM cliente WHERE nome ILIKE p_nome_cliente AND deletado = FALSE;
+
+	IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cliente "%" não encontrado ou deletado.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos em aberto 
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente AND p.status NOT IN ('ENTREGUE', 'CANCELADO')
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos em aberto.', p_nome_cliente;
+    END IF;
+
     RETURN QUERY
     SELECT 
         p.cod_pedido,
@@ -38,7 +58,37 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_cod_cliente INT;
+    v_existe BOOLEAN;
 BEGIN
+	-- Valida se cliente existe e está ativo
+	SELECT cod_cliente INTO v_cod_cliente FROM cliente WHERE nome ILIKE p_nome_cliente AND deletado = FALSE;
+
+	IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cliente "%" não encontrado ou deletado.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos cadastrados
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente 
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos cadastrados.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos entregues
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente and p.status = 'ENTREGUE'
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos entregues.', p_nome_cliente;
+    END IF;
+
 	RETURN QUERY
 		SELECT 
 			p.cod_pedido, 
@@ -50,7 +100,7 @@ BEGIN
 		JOIN cliente c ON p.cod_cliente = c.cod_cliente
 		JOIN item_pedido ip ON p.cod_pedido = ip.cod_pedido
 		JOIN produto pr ON ip.cod_produto = pr.cod_produto
-		WHERE c.nome ILIKE p_nome_cliente
+		WHERE c.nome ILIKE p_nome_cliente AND p.status = 'ENTREGUE'
 		ORDER BY p.data_hora_pedido DESC;
 END;
 $$;
@@ -66,7 +116,27 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_cod_cliente INT;
+    v_existe BOOLEAN;
 BEGIN
+	-- Valida se cliente existe e está ativo
+	SELECT cod_cliente INTO v_cod_cliente FROM cliente WHERE nome ILIKE p_nome_cliente AND deletado = FALSE;
+
+	IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cliente "%" não encontrado ou deletado.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos cadastrados
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente 
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos cadastrados.', p_nome_cliente;
+    END IF;
+
 	RETURN QUERY
 		SELECT 
 			pr.nome::TEXT,
@@ -93,7 +163,37 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_cod_cliente INT;
+    v_existe BOOLEAN;
 BEGIN
+	-- Valida se cliente existe e está ativo
+	SELECT cod_cliente INTO v_cod_cliente FROM cliente WHERE nome ILIKE p_nome_cliente AND deletado = FALSE;
+
+	IF NOT FOUND THEN
+        RAISE EXCEPTION 'Cliente "%" não encontrado ou deletado.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos cadastrados
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente 
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos cadastrados.', p_nome_cliente;
+    END IF;
+
+	-- Valida se o cliente possui pedidos cancelados
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente AND p.status = 'CANCELADO'
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos cancelados.', p_nome_cliente;
+    END IF;
+
 	RETURN QUERY
 		SELECT 
 			p.cod_pedido,

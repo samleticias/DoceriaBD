@@ -1,6 +1,7 @@
 -- ============================================
 -- FUNÇÃO: Relatório de Controle de Estoque de Ingredientes (com limite parametrizado)
 -- Lista ingredientes com estoque abaixo do valor informado.
+-- Lança erro se não houver ingredientes cadastrados.
 -- ============================================
 CREATE OR REPLACE FUNCTION relatorio_estoque_baixo(p_limite NUMERIC)
 RETURNS TABLE (
@@ -10,10 +11,22 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_ingredientes INT;
 BEGIN
     -- Validação de limite mínimo
     IF p_limite IS NULL OR p_limite < 0 THEN
         RAISE EXCEPTION 'Informe um valor de limite de estoque válido.';
+    END IF;
+
+    -- Quantidade de ingredientes cadastrados
+    SELECT COUNT(*) INTO v_total_ingredientes 
+    FROM ingrediente
+    WHERE deletado = FALSE;
+
+    -- Valida se a quantidade de ingredientes é igual a zero e lança erro
+    IF v_total_ingredientes = 0 THEN
+        RAISE EXCEPTION 'Não há ingredientes cadastrados para gerar o relatório.';
     END IF;
 
     -- Retornar ingredientes com estoque abaixo do valor informado
@@ -33,6 +46,7 @@ $$;
 -- ============================================
 -- FUNÇÃO: Relatório de Compras em Andamento
 -- Lista todas as compras com status 'EM ANDAMENTO'.
+-- Lança erro se não houver compras cadastrados.
 -- ============================================
 CREATE OR REPLACE FUNCTION relatorio_compras_em_andamento()
 RETURNS TABLE (
@@ -43,7 +57,18 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_compras INT;
 BEGIN
+    -- Quantidade de compras cadastradas
+    SELECT COUNT(*) INTO v_total_compras 
+    FROM compra;
+
+    -- Valida se a quantidade de compras é igual a zero e lança erro
+    IF v_total_compras = 0 THEN
+        RAISE EXCEPTION 'Não há compras cadastradas para gerar o relatório.';
+    END IF;
+
     RETURN QUERY
     SELECT 
         c.cod_compra,
@@ -61,6 +86,7 @@ $$;
 -- ============================================
 -- FUNÇÃO: Relatório de Estoque Atual dos Ingredientes
 -- Lista todos os ingredientes com suas quantidades em estoque.
+-- Lança erro se não houver ingredientes cadastrados.
 -- ============================================
 CREATE OR REPLACE FUNCTION relatorio_estoque_atual()
 RETURNS TABLE (
@@ -70,7 +96,19 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_ingredientes INT;
 BEGIN
+    -- Quantidade de ingredientes cadastrados
+    SELECT COUNT(*) INTO v_total_ingredientes 
+    FROM ingrediente
+    WHERE deletado = FALSE;
+
+    -- Valida se a quantidade de ingredientes é igual a zero e lança erro
+    IF v_total_ingredientes = 0 THEN
+        RAISE EXCEPTION 'Não há ingredientes cadastrados para gerar o relatório.';
+    END IF;
+    
     RETURN QUERY
     SELECT 
         nome::TEXT,

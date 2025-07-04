@@ -13,11 +13,6 @@ BEGIN
         RAISE EXCEPTION 'O valor total do pedido não pode ser negativo. Valor informado: %', NEW.valor_total;
     END IF;
 
-    -- Impedir pagamento true sem tipo de pagamento associado
-    IF NEW.pago = TRUE AND NEW.cod_tipo_pagamento IS NULL THEN
-        RAISE EXCEPTION 'Não é possível marcar como pago sem informar o tipo de pagamento.';
-    END IF;
-
     RETURN NEW;
 END;
 $$;
