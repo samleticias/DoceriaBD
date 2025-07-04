@@ -79,6 +79,16 @@ BEGIN
         RAISE EXCEPTION 'O cliente "%" não possui pedidos cadastrados.', p_nome_cliente;
     END IF;
 
+	-- Valida se o cliente possui pedidos entregues
+	SELECT EXISTS (
+        SELECT 1 FROM pedido p
+        WHERE cod_cliente = v_cod_cliente and p.status = 'ENTREGUE'
+    ) INTO v_existe;
+
+    IF NOT v_existe THEN
+        RAISE EXCEPTION 'O cliente "%" não possui pedidos entregues.', p_nome_cliente;
+    END IF;
+
 	RETURN QUERY
 		SELECT 
 			p.cod_pedido, 
@@ -90,7 +100,7 @@ BEGIN
 		JOIN cliente c ON p.cod_cliente = c.cod_cliente
 		JOIN item_pedido ip ON p.cod_pedido = ip.cod_pedido
 		JOIN produto pr ON ip.cod_produto = pr.cod_produto
-		WHERE c.nome ILIKE p_nome_cliente
+		WHERE c.nome ILIKE p_nome_cliente AND p.status = 'ENTREGUE'
 		ORDER BY p.data_hora_pedido DESC;
 END;
 $$;
