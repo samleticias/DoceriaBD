@@ -207,19 +207,9 @@ BEGIN
     WHERE cod_pedido = p_cod_pedido AND cod_produto = v_cod_produto;
 
     IF v_existe THEN
-        -- Recupera a quantidade atual
-        SELECT quantidade + p_quantidade
-        INTO v_nova_quantidade
-        FROM item_pedido
-        WHERE cod_pedido = p_cod_pedido AND cod_produto = v_cod_produto;
-
-        -- Atualiza usando procedure genérica
-        CALL atualizar_dados(
-            'item_pedido',
-            'quantidade',
-            v_nova_quantidade::TEXT,
-            FORMAT('cod_pedido = %s AND cod_produto = %s', p_cod_pedido, v_cod_produto)
-        );
+		-- o que realmente deve acontecer
+		RAISE EXCEPTION 'Item "%" já existia no pedido %.', p_nome_produto, p_cod_pedido;
+  		RETURN;
     ELSE
         -- Insere novo item usando procedure genérica
         CALL inserir_dados(
@@ -688,3 +678,40 @@ BEGIN
     RAISE NOTICE 'Quantidade do item "%" no pedido % atualizada para %.', p_nome_produto, p_cod_pedido, p_nova_quantidade;
 END;
 $$;
+
+-- ============================================
+-- FUNÇÃO: Consultar itens de um pedido
+-- ============================================
+CREATE OR REPLACE FUNCTION consultar_itens_pedido(p_cod_pedido INT)
+RETURNS TABLE (
+    produto TEXT,
+    quantidade INT,
+    valor_unitario NUMERIC(10, 2),
+    subtotal NUMERIC(10, 2)
+)
+AS $$
+BEGIN
+    -- Verificar se o pedido existe
+    PERFORM 1 FROM pedido WHERE cod_pedido = p_cod_pedido;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Pedido código % não encontrado.', p_cod_pedido;
+    END IF;
+
+    -- Verificar se possui itens
+    PERFORM 1 FROM item_pedido WHERE cod_pedido = p_cod_pedido;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'O pedido % não possui itens.', p_cod_pedido;
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        p.nome::TEXT,
+        ip.quantidade::INT,
+        p.valor_unitario::NUMERIC,
+        (ip.quantidade * p.valor_unitario)::NUMERIC
+    FROM item_pedido ip
+    JOIN produto p ON p.cod_produto = ip.cod_produto
+    WHERE ip.cod_pedido = p_cod_pedido;
+
+END;
+$$ LANGUAGE plpgsql;
