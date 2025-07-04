@@ -2,6 +2,7 @@
 CREATE OR REPLACE FUNCTION criar_pedido(p_nome_cliente TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
@@ -171,6 +172,7 @@ CREATE OR REPLACE FUNCTION adicionar_item_pedido(
 )
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_produto INT;
@@ -303,6 +305,7 @@ CREATE OR REPLACE FUNCTION pagar_pedido(
 )
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_tipo_pagamento INT;
@@ -531,6 +534,7 @@ RETURNS TABLE (
     valor_total NUMERIC
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
@@ -689,6 +693,7 @@ RETURNS TABLE (
     valor_unitario NUMERIC(10, 2),
     subtotal NUMERIC(10, 2)
 )
+SECURITY DEFINER
 AS $$
 BEGIN
     -- Verificar se o pedido existe

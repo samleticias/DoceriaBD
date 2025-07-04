@@ -57,6 +57,7 @@ RETURNS TABLE (
 	valor_unitario NUMERIC
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
@@ -115,6 +116,7 @@ RETURNS TABLE (
 	total_quantidade INT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
@@ -162,6 +164,7 @@ RETURNS TABLE (
     motivo TEXT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
