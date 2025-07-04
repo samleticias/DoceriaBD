@@ -131,6 +131,7 @@ CREATE OR REPLACE FUNCTION relatorio_total_gasto_cliente_mes(
 )
 RETURNS NUMERIC
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
