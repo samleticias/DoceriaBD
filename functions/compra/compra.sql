@@ -106,23 +106,8 @@ BEGIN
 
     -- Se já existe, atualiza a quantidade e valor unitário
     IF v_item_existe THEN
-        -- Atualiza quantidade
-        CALL atualizar_dados(
-            'item_compra',
-            'quantidade',
-            FORMAT('(quantidade + %s)', p_quantidade),
-            FORMAT('cod_compra = %s AND cod_ingrediente = %s', p_cod_compra, v_cod_ingrediente)
-        );
-
-        -- Atualiza valor unitário
-        CALL atualizar_dados(
-            'item_compra',
-            'valor_unitario',
-            p_valor_unitario::TEXT,
-            FORMAT('cod_compra = %s AND cod_ingrediente = %s', p_cod_compra, v_cod_ingrediente)
-        );
-
-        RAISE NOTICE 'Item "%" já existia na compra %. Quantidade e valor atualizados.', p_nome_ingrediente, p_cod_compra;
+        RAISE NOTICE 'Item "%" já existia na compra %.', p_nome_ingrediente, p_cod_compra;
+        RETURN;
 
     ELSE
         -- Insere novo item usando procedure genérica
