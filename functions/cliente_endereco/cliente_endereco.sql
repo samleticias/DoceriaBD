@@ -29,8 +29,11 @@ BEGIN
     END IF;
 
     -- Realiza o vínculo
-    INSERT INTO cliente_endereco (cod_cliente, cod_endereco)
-    VALUES (v_cod_cliente, p_cod_endereco);
+    call inserir_dados(
+        'cliente_endereco',
+        'cod_cliente, cod_endereco',
+        FORMAT('%s, %s', v_cod_cliente, p_cod_endereco)
+    );
 
     RAISE NOTICE 'Cliente "%" vinculado ao endereço % com sucesso.', p_nome_cliente, p_cod_endereco;
 END;

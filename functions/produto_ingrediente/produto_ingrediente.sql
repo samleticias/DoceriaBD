@@ -44,8 +44,11 @@ BEGIN
     END IF;
 
     -- Insere ingrediente na receita
-    INSERT INTO produto_ingrediente (cod_produto, cod_ingrediente, qtd_utilizada)
-    VALUES (v_cod_produto, v_cod_ingrediente, p_qtd);
+    call inserir_dados(
+        'produto_ingrediente',
+        'cod_produto, cod_ingrediente, qtd_utilizada',
+        FORMAT('%s, %s, %s', v_cod_produto, v_cod_ingrediente, p_qtd)
+    );
 
     RAISE NOTICE 'Ingrediente "%" adicionado na receita de "%".', p_nome_ingrediente, p_nome_produto;
 END;
