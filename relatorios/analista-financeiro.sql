@@ -12,7 +12,20 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_compras INT;
+    v_total_pedidos INT;
 BEGIN
+    -- Quantidade de compras cadastradas
+    SELECT COUNT(*) INTO v_total_compras FROM compra;
+
+    -- Quantidade de pedidos cadastrados
+    SELECT COUNT(*) INTO v_total_pedidos FROM pedido;
+
+    IF v_total_compras = 0 AND v_total_pedidos = 0 THEN
+        RAISE EXCEPTION 'Não há compras nem pedidos cadastrados para gerar o relatório.';
+    END IF;
+
     RETURN QUERY
     SELECT 
         d.data_ref,
@@ -43,7 +56,24 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_pedidos INT;
+	v_total_pedidos_pagos INT;
 BEGIN
+    -- Quantidade de pedidos cadastrados
+    SELECT COUNT(*) INTO v_total_pedidos FROM pedido;
+
+    IF v_total_pedidos = 0 THEN
+        RAISE EXCEPTION 'Não há pedidos cadastrados para gerar o relatório.';
+    END IF;
+	
+	-- Verifica se há pedidos pagos
+    SELECT COUNT(*) INTO v_total_pedidos_pagos FROM pedido WHERE pago = TRUE;
+
+    IF v_total_pedidos_pagos = 0 THEN
+        RAISE EXCEPTION 'Não há pedidos pagos para gerar o relatório.';
+    END IF;
+
     RETURN QUERY
     SELECT 
         tp.nome::TEXT,
@@ -69,7 +99,25 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_total_compras INT;
+    v_total_pedidos_pagos INT;
 BEGIN
+    -- Verifica total de compras cadastradas
+    SELECT COUNT(*) INTO v_total_compras 
+    FROM compra;
+
+    -- Verifica total de pedidos pagos
+    SELECT COUNT(*) INTO v_total_pedidos_pagos 
+    FROM pedido 
+    WHERE pago = TRUE;
+
+    -- Se não houver nenhum dos dois, lança erro
+    IF v_total_compras = 0 AND v_total_pedidos_pagos = 0 THEN
+        RAISE EXCEPTION 'Não há compras cadastradas nem pedidos pagos para gerar o relatório.';
+    END IF;
+
+    -- Gera relatório unificado
     RETURN QUERY
     SELECT 
         p.data_hora_pedido::DATE AS data,

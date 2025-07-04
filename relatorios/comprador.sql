@@ -108,7 +108,7 @@ BEGIN
     IF v_total_ingredientes = 0 THEN
         RAISE EXCEPTION 'Não há ingredientes cadastrados para gerar o relatório.';
     END IF;
-    
+
     RETURN QUERY
     SELECT 
         nome::TEXT,
@@ -157,5 +157,42 @@ BEGIN
     WHERE p.status IN ('SAIU PARA ENTREGA', 'ENTREGUE')
     GROUP BY i.nome, i.unidade_medida
     ORDER BY total_consumido DESC;
+END;
+$$;
+
+-- ============================================
+-- FUNÇÃO: Relatório de Compras por Fornecedor
+-- Agrupa e soma o valor total de compras feitas por cada fornecedor.
+-- Lança erro se não houver compras cadastradas.
+-- ============================================
+CREATE OR REPLACE FUNCTION relatorio_compras_por_fornecedor()
+RETURNS TABLE (
+    fornecedor TEXT,
+    total_compras NUMERIC(10,2),
+    quantidade_compras INT
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_total_compras INT;
+BEGIN
+    -- Verifica se há compras cadastradas
+    SELECT COUNT(*) INTO v_total_compras
+    FROM compra;
+
+    IF v_total_compras = 0 THEN
+        RAISE EXCEPTION 'Não há compras cadastradas para gerar o relatório.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        f.nome::TEXT AS fornecedor,
+        SUM(c.valor_total)::NUMERIC(10,2) AS total_compras,
+        COUNT(c.cod_compra)::INT AS quantidade_compras
+    FROM compra c
+    JOIN fornecedor f ON c.cod_fornecedor = f.cod_fornecedor
+    WHERE f.deletado = FALSE
+    GROUP BY f.nome
+    ORDER BY total_compras DESC;
 END;
 $$;
