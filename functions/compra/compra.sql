@@ -360,6 +360,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- ============================================
+-- FUNÇÃO: Cancelar compra
+-- Atualiza status para CANCELADA se a compra estiver EM ANDAMENTO
+-- ============================================
+CREATE OR REPLACE FUNCTION cancelar_compra(p_cod_compra INT)
+RETURNS VOID
+AS $$
+DECLARE
+    v_status STATUS_COMPRA_ENUM;
+BEGIN
+    -- Verifica se a compra existe
+    SELECT status INTO v_status
+    FROM compra
+    WHERE cod_compra = p_cod_compra;
 
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Compra código % não encontrada.', p_cod_compra;
+    END IF;
+
+    -- Só permite cancelar se estiver EM ANDAMENTO
+    IF v_status != 'EM ANDAMENTO' THEN
+        RAISE EXCEPTION 'Apenas compras EM ANDAMENTO podem ser canceladas. Situação atual: %.', v_status;
+    END IF;
+
+    -- Atualiza status para CANCELADA
+    UPDATE compra
+    SET status = 'CANCELADA'
+    WHERE cod_compra = p_cod_compra;
+
+    RAISE NOTICE 'Compra % cancelada com sucesso.', p_cod_compra;
+END;
+$$ LANGUAGE plpgsql;
 
 
