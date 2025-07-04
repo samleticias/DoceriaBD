@@ -81,6 +81,14 @@ BEGIN
         RAISE EXCEPTION 'Compra código % não encontrada ou não está EM ANDAMENTO.', p_cod_compra;
     END IF;
 
+    IF p_quantidade <= 0 THEN
+        RAISE EXCEPTION 'A quantidade do item deve ser maior que zero.';
+    END IF;
+
+    IF p_valor_unitario <= 0 THEN
+        RAISE EXCEPTION 'O valor unitário deve ser maior que zero.';
+    END IF;
+
     -- Buscar ingrediente não deletado
     SELECT cod_ingrediente INTO v_cod_ingrediente
     FROM ingrediente
