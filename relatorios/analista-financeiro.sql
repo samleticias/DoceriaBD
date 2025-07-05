@@ -106,14 +106,14 @@ DECLARE
     v_total_compras INT;
     v_total_pedidos_pagos INT;
 BEGIN
-    -- Verifica total de compras cadastradas
+    -- Verifica total de compras cadastradas e finalizadas
     SELECT COUNT(*) INTO v_total_compras 
-    FROM compra;
+    FROM compra WHERE status = 'FINALIZADA';
 
     -- Verifica total de pedidos pagos
     SELECT COUNT(*) INTO v_total_pedidos_pagos 
     FROM pedido 
-    WHERE pago = TRUE;
+    WHERE pago = TRUE AND status = 'ENTREGUE';
 
     -- Se não houver nenhum dos dois, lança erro
     IF v_total_compras = 0 AND v_total_pedidos_pagos = 0 THEN
