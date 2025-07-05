@@ -669,6 +669,9 @@ BEGIN
         RAISE EXCEPTION 'Item "%" não encontrado no pedido %.', p_nome_produto, p_cod_pedido;
     END IF;
 
+    -- Verifica se há ingredientes suficientes
+    PERFORM verificar_estoque_ingredientes(p_cod_pedido, v_cod_produto, p_nova_quantidade);
+
     -- Atualizar quantidade usando procedure genérica
     CALL atualizar_dados(
         'item_pedido',
