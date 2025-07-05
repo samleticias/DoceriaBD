@@ -721,3 +721,58 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+
+-- Função para trazer as informações de um pedido por id
+CREATE OR REPLACE FUNCTION consultar_pedido_por_id(p_cod_pedido INT)
+RETURNS TABLE (
+    cod_pedido INT,
+    data_hora_pedido TIMESTAMP,
+    status TEXT,
+    valor_total NUMERIC,
+    pago BOOLEAN,
+    nome_cliente TEXT,
+    endereco TEXT,
+    nome_entregador TEXT,
+    nome_atendente TEXT,
+    hora_prevista_entrega TIMESTAMP,
+    hora_entrega_real TIMESTAMP,
+    tipo_pagamento TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Validação se o pedido existe
+    IF NOT EXISTS (
+        SELECT 1 FROM pedido p WHERE p.cod_pedido = p_cod_pedido
+    ) THEN
+        RAISE EXCEPTION 'Pedido de código % não encontrado.', p_cod_pedido;
+    END IF;
+
+    -- Consulta e retorno dos dados
+    RETURN QUERY
+    SELECT 
+        p.cod_pedido,
+        p.data_hora_pedido,
+        p.status::TEXT,
+        p.valor_total,
+        p.pago,
+        c.nome::TEXT AS nome_cliente,
+        CONCAT(e.rua, ', ', e.numero, ' - ', e.bairro)::TEXT AS endereco,
+        en.nome::TEXT AS nome_entregador,
+        a.nome::TEXT AS nome_atendente,
+        p.hora_prevista_entrega,
+        p.hora_entrega_real,
+        tp.nome::TEXT AS tipo_pagamento
+    FROM pedido p
+    JOIN cliente c ON p.cod_cliente = c.cod_cliente
+    JOIN endereco e ON p.cod_endereco = e.cod_endereco
+    LEFT JOIN entregador en ON p.cod_entregador = en.cod_entregador
+    LEFT JOIN atendente a ON p.cod_atendente = a.cod_atendente
+    LEFT JOIN tipo_pagamento tp ON p.cod_tipo_pagamento = tp.cod_tipo_pagamento
+    WHERE p.cod_pedido = p_cod_pedido;
+
+END;
+$$;
+
+
+

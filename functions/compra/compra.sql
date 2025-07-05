@@ -396,4 +396,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION consultar_compra_por_id(p_cod_compra INT)
+RETURNS TABLE (
+    cod_compra INT,
+    data_compra TIMESTAMP,
+    status TEXT,
+    valor_total NUMERIC,
+    nome_fornecedor TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    -- Validação se a compra existe
+    IF NOT EXISTS (
+        SELECT 1 FROM compra c WHERE c.cod_compra = p_cod_compra
+    ) THEN
+        RAISE EXCEPTION 'Compra de código % não encontrada.', p_cod_compra;
+    END IF;
+
+    -- Consulta e retorno dos dados da compra
+    RETURN QUERY
+    SELECT 
+        c.cod_compra,
+        c.data_compra,
+        c.status::TEXT,
+        c.valor_total,
+        f.nome::TEXT AS nome_fornecedor
+    FROM compra c
+    JOIN fornecedor f ON c.cod_fornecedor = f.cod_fornecedor
+    WHERE c.cod_compra = p_cod_compra;
+
+END;
+$$;
+
 
