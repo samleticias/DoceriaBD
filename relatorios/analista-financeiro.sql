@@ -127,7 +127,7 @@ BEGIN
         'VENDA'::TEXT AS tipo,
         p.valor_total
     FROM pedido p
-    WHERE p.pago = TRUE
+    WHERE p.pago = TRUE AND p.status = 'ENTREGUE'
 
     UNION ALL
 
@@ -135,7 +135,7 @@ BEGIN
         c.data_compra::DATE AS data,
         'COMPRA'::TEXT AS tipo,
         c.valor_total
-    FROM compra c
+    FROM compra c WHERE c.status = 'FINALIZADA'
 
     ORDER BY data, tipo;
 END;
