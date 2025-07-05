@@ -10,13 +10,13 @@ RESTART IDENTITY CASCADE;
 
 -- CLIENTES
 CALL inserir_dados('cliente', 'nome, email, telefone',
-    '''Ana Souza'', ''ana.souza@email.com'', ''11987654321'''
+    '''Thiago elias'', ''thiago.elias@email.com'', ''11987654321'''
 );
 CALL inserir_dados('cliente', 'nome, email, telefone',
-    '''Carlos Lima'', ''carlos.lima@email.com'', ''21912345678'''
+    '''Rogerio'', ''rogerio.romantico@email.com'', ''21912345678'''
 );
 CALL inserir_dados('cliente', 'nome, email, telefone',
-    '''Fernanda Alves'', ''fernanda.alves@email.com'', ''31955554444'''
+    '''Marcelino'', ''marcelino@email.com'', ''31955554444'''
 );
 
 
@@ -40,19 +40,19 @@ CALL inserir_dados('cliente_endereco', 'cod_cliente, cod_endereco', '3, 3');
 
 -- ATENDENTES
 CALL inserir_dados('atendente', 'nome, cpf, email',
-    '''Julia Mendes'', ''12345678901'', ''julia@email.com'''
+    '''Joao Victor'', ''12345678901'', ''jota@email.com'''
 );
 CALL inserir_dados('atendente', 'nome, cpf, email',
-    '''Diego Costa'', ''98765432100'', ''diego@email.com'''
+    '''xama cardoso'', ''98765432100'', ''xama@email.com'''
 );
 
 
 -- ENTREGADORES
 CALL inserir_dados('entregador', 'nome, cpf, telefone',
-    '''Marcos Dias'', ''23456789012'', ''11999998888'''
+    '''Sammya Leticia'', ''23456789012'', ''11999998888'''
 );
 CALL inserir_dados('entregador', 'nome, cpf, telefone',
-    '''Bianca Rocha'', ''34567890123'', ''21988887777'''
+    '''Enzo Melo'', ''34567890123'', ''21988887777'''
 );
 
 
@@ -188,6 +188,3 @@ CALL inserir_dados('produto_ingrediente', 'cod_produto, cod_ingrediente, qtd_uti
 CALL inserir_dados('produto_ingrediente', 'cod_produto, cod_ingrediente, qtd_utilizada', '10, 6, 0.2'); -- Açúcar
 CALL inserir_dados('produto_ingrediente', 'cod_produto, cod_ingrediente, qtd_utilizada', '10, 7, 4');   -- Ovos
 CALL inserir_dados('produto_ingrediente', 'cod_produto, cod_ingrediente, qtd_utilizada', '10, 10, 0.2');-- Creme de Leite
-
-
-
