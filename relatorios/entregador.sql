@@ -11,6 +11,7 @@ RETURNS TABLE (
     hora_prevista_entrega TIMESTAMP
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
@@ -47,6 +48,7 @@ RETURNS TABLE (
     atraso_minutos INT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_entregador INT;
@@ -98,6 +100,7 @@ RETURNS TABLE (
     status TEXT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
@@ -133,6 +136,7 @@ RETURNS TABLE (
     tempo_medio_entrega NUMERIC
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY
