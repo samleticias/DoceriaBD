@@ -24,7 +24,7 @@ SELECT adicionar_item_pedido(1, 'Bolo de Cenoura com Cobertura', 1);
 SELECT * FROM consultar_itens_pedido(1);
 
 -- 4. Editar quantidade
--- Ajustar Brigadeiro para 4 unidades
+-- Ajustar Mousse de maracujá para 4 unidades
 SELECT editar_quantidade_item_pedido(1, 'Mousse de maracujá', 4);
 
 -- Verificar
@@ -53,11 +53,14 @@ SELECT pagar_pedido(1, 'Dinheiro');
 -- Verificar
 SELECT * FROM consultar_pedido_por_id(1);
 
--- 8. Finalizar pedido pelo atendente Joao Victor
-SELECT finalizar_pedido(1, 'Joao Victor');
-
 -- verificando os ingredientes que formam o Brigadeiro Gourmet (receita)
 SELECT * FROM consultar_receita_produto('Mousse de maracujá');
+
+-- Verificar estoque antes da finalização
+SELECT * FROM relatorio_estoque_atual();
+
+-- 8. Finalizar pedido pelo atendente Joao Victor
+SELECT finalizar_pedido(1, 'Joao Victor');
 
 -- Verificar estoque ajustado em ingrediente
 SELECT * FROM relatorio_estoque_atual();
