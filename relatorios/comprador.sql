@@ -10,6 +10,7 @@ RETURNS TABLE (
     qtd_em_estoque NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_ingredientes INT;
@@ -56,9 +57,11 @@ RETURNS TABLE (
     valor_total NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_compras INT;
+	v_total_compras_andamento INT;
 BEGIN
     -- Quantidade de compras cadastradas
     SELECT COUNT(*) INTO v_total_compras 
@@ -67,6 +70,15 @@ BEGIN
     -- Valida se a quantidade de compras é igual a zero e lança erro
     IF v_total_compras = 0 THEN
         RAISE EXCEPTION 'Não há compras cadastradas para gerar o relatório.';
+    END IF;
+	
+	-- Quantidade de compras em andamento
+    SELECT COUNT(*) INTO v_total_compras_andamento
+    FROM compra WHERE status = 'EM ANDAMENTO';
+
+    -- Valida se a quantidade de compras em andamento é igual a zero e lança erro
+    IF v_total_compras_andamento = 0 THEN
+        RAISE EXCEPTION 'Não há compras em andamento para gerar o relatório.';
     END IF;
 
     RETURN QUERY
@@ -95,6 +107,7 @@ RETURNS TABLE (
     qtd_em_estoque NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_ingredientes INT;
@@ -132,6 +145,7 @@ RETURNS TABLE (
     total_consumido NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total INT;
@@ -172,6 +186,7 @@ RETURNS TABLE (
     quantidade_compras INT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_compras INT;

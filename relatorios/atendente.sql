@@ -9,6 +9,7 @@ RETURNS TABLE (
     status TEXT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_cliente INT;
@@ -222,6 +223,7 @@ RETURNS TABLE (
     valor_total NUMERIC
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
     RETURN QUERY

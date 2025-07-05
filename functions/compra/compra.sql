@@ -2,6 +2,7 @@
 CREATE OR REPLACE FUNCTION criar_compra(p_nome_fornecedor TEXT)
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_fornecedor INT;
@@ -67,6 +68,7 @@ CREATE OR REPLACE FUNCTION adicionar_item_compra(
 )
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_cod_ingrediente INT;
@@ -268,6 +270,7 @@ $$;
 CREATE OR REPLACE FUNCTION finalizar_compra(p_cod_compra INT)
 RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_valor_total NUMERIC := 0;
