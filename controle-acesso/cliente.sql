@@ -13,6 +13,8 @@ GRANT cliente TO maria_cliente;
 -- DEFINE PERMISSÕES PARA A ROLE cliente
 -- ==============================================
 
+<<<<<<< HEAD
+=======
 -- Permissão para criar pedido
 GRANT EXECUTE ON FUNCTION criar_pedido(text) TO cliente;
 
@@ -25,6 +27,7 @@ GRANT EXECUTE ON FUNCTION pagar_pedido(int, text) TO cliente;
 -- Permissão para consultar itens do pedido
 GRANT EXECUTE ON FUNCTION consultar_itens_pedido(int) TO cliente;
 
+>>>>>>> d23bd6d852a8796dc651a5786046f60fec1f189b
 -- Permissão para consultar seus pedidos em aberto
 GRANT EXECUTE ON FUNCTION listar_pedidos_abertos(text) TO cliente;
 

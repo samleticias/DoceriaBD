@@ -11,6 +11,7 @@ RETURNS TABLE (
     saldo NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_compras INT;
@@ -55,6 +56,7 @@ RETURNS TABLE (
     total_recebido NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_pedidos INT;
@@ -98,6 +100,7 @@ RETURNS TABLE (
     total NUMERIC(10,2)
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 DECLARE
     v_total_compras INT;
