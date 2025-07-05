@@ -15,7 +15,7 @@ SELECT * FROM listar_pedidos_abertos('thiago elias');
 SELECT adicionar_item_pedido(1, 'Mousse de maracujá', 5);
 
 -- Adicionar novamente o produto anterior (erro produto já adicionado no pedido)
-SELECT adicionar_item_pedido(1, 'Mousse de maracujá', 3);
+SELECT adicionar_item_pedido(1, 'Mousse de maracujá', 1);
 
 -- Produto: Bolo de Cenoura, quantidade 1
 SELECT adicionar_item_pedido(1, 'Bolo de Cenoura com Cobertura', 1);

@@ -243,6 +243,7 @@ RETURNS TABLE (
     status TEXT
 )
 LANGUAGE plpgsql
+SECURITY DEFINER
 AS $$
 BEGIN
 

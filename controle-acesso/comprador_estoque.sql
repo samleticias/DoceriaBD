@@ -16,6 +16,9 @@ GRANT comprador_estoque TO gabriel_comprador;
 -- Permissão para criar compras
 GRANT EXECUTE ON FUNCTION criar_compra(text) TO comprador_estoque;
 
+-- Permissão para visualizar as informações de compras em aberto de um determinado fornecedor
+GRANT EXECUTE ON FUNCTION listar_compras_em_aberto(text) TO comprador_estoque;
+
 -- Permissão para adicionar itens à compra
 GRANT EXECUTE ON FUNCTION adicionar_item_compra(int, text, numeric, int) TO comprador_estoque;
 
