@@ -117,7 +117,7 @@ BEGIN
 
     -- Se não houver nenhum dos dois, lança erro
     IF v_total_compras = 0 AND v_total_pedidos_pagos = 0 THEN
-        RAISE EXCEPTION 'Não há compras cadastradas nem pedidos pagos para gerar o relatório.';
+        RAISE EXCEPTION 'Não há compras finalizadas nem pedidos pagos e finalizados para gerar o relatório.';
     END IF;
 
     -- Gera relatório unificado
