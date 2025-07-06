@@ -4,6 +4,10 @@
 
 **DoceriaBD** é um banco de dados relacional desenvolvido em **PostgreSQL** para gerenciar as operações de uma doceria, incluindo cadastro de clientes, pedidos, estoque de ingredientes, compras, entregas, pagamentos e receitas dos produtos.
 
+## 🧩 Diagrama do Banco de Dados
+
+![Diagrama do Banco de Dados](https://raw.githubusercontent.com/samleticias/DoceriaBD/main/diagrama/diagrama_doceria_bd.jpg)
+
 ## 📋 Funcionalidades Principais
 
 - **Cadastro e gerenciamento de clientes e endereços**
